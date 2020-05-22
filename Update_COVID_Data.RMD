@@ -1,0 +1,62 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+setwd("/Users/jonahbreslow/Documents/GitHub/")
+```
+
+```{r}
+data_dir <- "/Users/jonahbreslow/Documents/GitHub/COVID-19/csse_covid_19_data/"
+
+files <- list.files(paste0(data_dir,'csse_covid_19_daily_reports'), pattern = ".csv") 
+
+MostRecentFile <- files[length(files)]
+NewDeathsFile <- read_csv(paste0(data_dir,"csse_covid_19_daily_reports/",MostRecentFile))
+vDate <- str_replace(str_replace(format(as.Date(str_replace(MostRecentFile,'.csv',''), '%m-%d-%Y'), "%m/%d/%Y"), '(^0+)',''),'/0','/')
+                    
+```
+
+```{r}
+PreviousDeaths <- read_csv("Covid-Dashboard/Tableau_Data/time_series_19-covid-Deaths.csv")
+
+PreviousDeaths %>% filter(State == "New York")%>% arrange(desc(Deaths))
+
+maxDate <- PreviousDeaths %>% 
+  distinct(Date) %>% 
+  filter(Date == max(Date)) %>% 
+  mutate(Date = str_replace_all(Date, "/","."))%>%
+  pull(Date)
+
+write.csv(PreviousDeaths, paste0("Covid-Dashboard/Tableau_Data/Archive/time_series_19-covid-Deaths-",maxDate,".csv"))
+
+Deaths <- PreviousDeaths %>% 
+  bind_rows(NewDeathsFile %>% 
+              mutate(`Number of Records` = 1,
+                      Date = vDate)%>%
+              filter(Country_Region=="US") %>%
+              select(`Country/Region`=Country_Region,
+                     Lat,
+                     Long = Long_,
+                     `Number of Records`,
+                     Date,
+                     Deaths,
+                     State = Province_State) 
+  ) %>% 
+  #Really odd that distinct is not working here, i am extrememly confused
+  unique()
+
+Deaths %>% filter(State == "New York")%>% arrange(desc(Deaths))
+
+write.csv(Deaths,"Covid-Dashboard/Tableau_Data/time_series_19-covid-Deaths.csv",row.names = F)
+```
+
+```{r}
+
+Confirmed <- read_csv(paste0(data_dir,"csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"))
+write.csv(Confirmed,"Covid-Dashboard/Tableau_Data/time_series_covid19_confirmed_US.csv",row.names=F)
+```
+ 
